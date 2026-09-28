@@ -130,7 +130,7 @@
         '<span class="step-n">' + s.n + '</span>' +
         '<span class="step-body"><strong>' + esc(s.text) + '</strong>' +
         '<span class="muted small">' + esc(s.owner) + ' · ' + esc(s.time) + '</span>' +
-        '<span class="tip">⚠ ' + esc(s.tip) + '</span></span></label>';
+        '<span class="tip"><strong>Watch out:</strong> ' + esc(s.tip) + '</span></span></label>';
     }).join('');
   }
 
@@ -181,7 +181,7 @@
         arr.forEach(function (t, i) { current.steps[i].text = String(t); });
         var lib = loadLib().map(function (x) { return x.id === current.id ? current : x; });
         saveLib(lib); renderSOP();
-        msg.textContent = 'Polished ✓ (key kept only in this tab — it is never saved).';
+        msg.textContent = 'Polished. Key kept only in this tab — it is never saved.';
       } else { msg.textContent = 'AI returned something odd — kept your original steps.'; }
     } catch (e) {
       msg.textContent = 'Couldn\'t reach the AI (' + e.message + ') — your original steps are untouched.';

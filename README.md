@@ -1,4 +1,4 @@
-# 🛠 SopForge
+# SopForge
 
 **Describe a process in plain English. Get a step-by-step SOP with a checklist.**
 
