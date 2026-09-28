@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SopForge — plain English in, SOP out</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -16,11 +19,13 @@
   <!-- FORGE VIEW -->
   <section id="view-forge">
     <div class="hero">
+      <span class="spec-tag">SOP-01 · Process spec</span>
       <h1>Turn tribal knowledge into a checklist</h1>
       <p class="muted">Describe how something gets done in plain English. SopForge turns it into numbered steps with owners, time estimates, and watch-out tips — then your team runs it as a checklist.</p>
     </div>
 
     <div class="panel">
+      <div class="spec-label">New process spec</div>
       <label>Process name <input id="proc-name" type="text" placeholder="e.g. Opening the shop"></label>
       <label>Who usually does it? <input id="proc-role" type="text" placeholder="e.g. Opener, Cashier, Manager"></label>
       <label>Describe the process in plain English
@@ -37,6 +42,7 @@
     <div id="template-list" class="chips"></div>
 
     <div class="panel" id="library-panel">
+      <div class="spec-label">Spec archive</div>
       <h2>My SOP library</h2>
       <div id="library-list"></div>
     </div>
