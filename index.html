@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SopForge — plain English in, SOP out</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">🛠 SopForge</div>
+  <div class="muted small">Describe the process. Get the playbook.</div>
+</header>
+
+<main>
+  <!-- FORGE VIEW -->
+  <section id="view-forge">
+    <div class="hero">
+      <h1>Turn tribal knowledge into a checklist</h1>
+      <p class="muted">Describe how something gets done in plain English. SopForge turns it into numbered steps with owners, time estimates, and watch-out tips — then your team runs it as a checklist.</p>
+    </div>
+
+    <div class="panel">
+      <label>Process name <input id="proc-name" type="text" placeholder="e.g. Opening the shop"></label>
+      <label>Who usually does it? <input id="proc-role" type="text" placeholder="e.g. Opener, Cashier, Manager"></label>
+      <label>Describe the process in plain English
+        <textarea id="proc-desc" rows="7" placeholder="One action per line works best.&#10;e.g.&#10;Unlock the front door and disarm the alarm.&#10;Turn on all the lights and the open sign.&#10;Count the cash in the register…"></textarea>
+      </label>
+      <div id="forge-error" class="error"></div>
+      <div class="row">
+        <button id="forge-btn" class="primary">⚒ Forge my SOP</button>
+        <button id="library-btn" class="ghost">📚 My SOP library</button>
+      </div>
+    </div>
+
+    <h2>Or start from a template</h2>
+    <div id="template-list" class="chips"></div>
+
+    <div class="panel" id="library-panel">
+      <h2>📚 My SOP library</h2>
+      <div id="library-list"></div>
+    </div>
+  </section>
+
+  <!-- SOP VIEW -->
+  <section id="view-sop" style="display:none">
+    <div class="row between">
+      <button id="back-btn" class="ghost">← Back</button>
+      <div class="row">
+        <button id="reset-btn" class="ghost">↺ Reset checklist</button>
+        <button id="print-btn" class="ghost">🖨 Print</button>
+      </div>
+    </div>
+    <h1 id="sop-title"></h1>
+    <p id="sop-meta" class="muted"></p>
+    <div class="progress"><div id="progress-fill"></div></div>
+    <p id="progress-label" class="muted small"></p>
+    <div id="step-list"></div>
+
+    <div class="panel ai-panel">
+      <h3>✨ Optional AI polish</h3>
+      <p class="muted small">Have your own OpenAI key? Paste it to sharpen the wording. Totally optional — the local forge already did the structuring. Your key is never saved.</p>
+      <div class="row">
+        <input id="ai-key" type="password" placeholder="sk-…" autocomplete="off">
+        <button id="polish-btn">Polish wording</button>
+      </div>
+      <p id="polish-msg" class="muted small"></p>
+    </div>
+  </section>
+
+</main>
+
+<footer class="muted small">SopForge runs 100% in your browser. Nothing you type ever leaves this device.</footer>
+
+<script src="js/forge.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
