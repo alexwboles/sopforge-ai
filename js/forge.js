@@ -117,9 +117,7 @@
       role: role || 'General',
       createdAt: new Date().toISOString(),
       steps: steps,
-      totalTime: totalMin >= 60
-        ? Math.floor(totalMin / 60) + 'h ' + (totalMin % 60) + 'm'
-        : totalMin + ' min',
+      totalTime: totalTimeFor(steps),
     };
   }
 
@@ -158,8 +156,91 @@
     estimateTime: estimateTime,
     tipFor: tipFor,
     forgeSOP: forgeSOP,
+    renumberSteps: renumberSteps,
+    addStep: addStep,
+    removeStep: removeStep,
+    sopToCSV: sopToCSV,
+    sopToMarkdown: sopToMarkdown,
     TEMPLATES: TEMPLATES,
   };
+
+  // ---------- step editing ----------
+  function renumberSteps(steps) {
+    steps.forEach(function (s, i) { s.n = i + 1; });
+    return steps;
+  }
+
+  function makeStep(text, idx) {
+    var cleanText = clean(String(text || ''));
+    return {
+      n: 0, // renumbered by caller
+      text: cleanText.charAt(0).toUpperCase() + cleanText.slice(1),
+      owner: ownerFor(cleanText),
+      time: estimateTime(cleanText),
+      tip: tipFor(cleanText, idx || 0),
+      done: false,
+    };
+  }
+
+  function addStep(sop, text) {
+    if (!sop || !sop.steps) return null;
+    var t = clean(String(text || ''));
+    if (!t || t.split(/\s+/).length < 2) return null;
+    sop.steps.push(makeStep(t, sop.steps.length));
+    renumberSteps(sop.steps);
+    sop.totalTime = totalTimeFor(sop.steps);
+    return sop.steps[sop.steps.length - 1];
+  }
+
+  function removeStep(sop, index) {
+    if (!sop || !sop.steps) return false;
+    if (index < 0 || index >= sop.steps.length) return false;
+    sop.steps.splice(index, 1);
+    renumberSteps(sop.steps);
+    sop.totalTime = totalTimeFor(sop.steps);
+    return true;
+  }
+
+  function totalTimeFor(steps) {
+    var totalMin = steps.reduce(function (acc, s) {
+      var m = parseInt(s.time, 10);
+      return acc + (isNaN(m) ? 10 : m);
+    }, 0);
+    return totalMin >= 60
+      ? Math.floor(totalMin / 60) + 'h ' + (totalMin % 60) + 'm'
+      : totalMin + ' min';
+  }
+
+  // ---------- exports ----------
+  function csvCell(v) {
+    return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+  }
+
+  function sopToCSV(sop) {
+    var rows = [['Step', 'Text', 'Owner', 'Time estimate', 'Watch-out tip', 'Done']];
+    (sop.steps || []).forEach(function (s) {
+      rows.push([s.n, s.text, s.owner, s.time, s.tip, s.done ? 'yes' : 'no']);
+    });
+    return '﻿' + rows.map(function (r) { return r.map(csvCell).join(','); }).join('\r\n');
+  }
+
+  function sopToMarkdown(sop) {
+    var lines = [
+      '# ' + sop.name,
+      '',
+      '_' + sop.role + ' · ' + sop.steps.length + ' steps · about ' + sop.totalTime + '_',
+      '',
+      '## Checklist',
+      ''
+    ];
+    sop.steps.forEach(function (s) {
+      lines.push('- [' + (s.done ? 'x' : ' ') + '] **' + s.n + '. ' + s.text + '**');
+      lines.push('  — Owner: ' + s.owner + ' · ' + s.time);
+      lines.push('  — Watch out: ' + s.tip);
+      lines.push('');
+    });
+    return lines.join('\n');
+  }
 
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   global.SopForge = api;

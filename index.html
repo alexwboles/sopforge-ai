@@ -44,6 +44,10 @@
     <div class="panel" id="library-panel">
       <div class="spec-label">Spec archive</div>
       <h2>My SOP library</h2>
+      <div class="library-toolbar">
+        <input id="library-search" type="search" placeholder="Search SOPs by name or step…" aria-label="Search SOP library">
+        <select id="library-role" aria-label="Filter by role"><option value="">All roles</option></select>
+      </div>
       <div id="library-list"></div>
     </div>
   </section>
@@ -53,6 +57,9 @@
     <div class="row between">
       <button id="back-btn" class="ghost">← Back</button>
       <div class="row">
+        <button id="add-step-btn" class="ghost">＋ Add step</button>
+        <button id="csv-btn" class="ghost">Export CSV</button>
+        <button id="md-btn" class="ghost">Export .md</button>
         <button id="reset-btn" class="ghost">↺ Reset checklist</button>
         <button id="print-btn" class="ghost">Print</button>
       </div>
@@ -61,6 +68,7 @@
     <p id="sop-meta" class="muted"></p>
     <div class="progress"><div id="progress-fill"></div></div>
     <p id="progress-label" class="muted small"></p>
+    <div id="complete-banner" class="complete-banner" style="display:none"></div>
     <div id="step-list"></div>
 
     <div class="panel ai-panel">

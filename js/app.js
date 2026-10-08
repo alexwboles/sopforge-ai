@@ -26,16 +26,45 @@
   }
 
   // ---------- library ----------
+  function sopProgress(s) {
+    var done = (s.steps || []).filter(function (x) { return x.done; }).length;
+    return { done: done, total: (s.steps || []).length };
+  }
+
   function renderLibrary() {
     var lib = loadLib();
+    // role filter options (distinct roles in the library)
+    var roleSel = el('library-role');
+    var roles = [];
+    lib.forEach(function (s) { if (s.role && roles.indexOf(s.role) === -1) roles.push(s.role); });
+    var keep = roleSel.value;
+    roleSel.innerHTML = '<option value="">All roles</option>' + roles.map(function (r) {
+      return '<option' + (r === keep ? ' selected' : '') + '>' + esc(r) + '</option>';
+    }).join('');
+    if (roles.indexOf(keep) === -1) roleSel.value = '';
+
+    var q = el('library-search').value.trim().toLowerCase();
+    var shown = lib.filter(function (s) {
+      if (roleSel.value && s.role !== roleSel.value) return false;
+      if (!q) return true;
+      var hay = (s.name + ' ' + s.role + ' ' + (s.steps || []).map(function (x) { return x.text; }).join(' ')).toLowerCase();
+      return hay.indexOf(q) !== -1;
+    });
+
     var box = el('library-list');
     if (!lib.length) {
       box.innerHTML = '<p class="muted">No saved SOPs yet. Forge one above, or load a starter template.</p>';
       return;
     }
-    box.innerHTML = lib.map(function (s) {
+    if (!shown.length) {
+      box.innerHTML = '<p class="muted">No SOPs match your search.</p>';
+      return;
+    }
+    box.innerHTML = shown.map(function (s) {
+      var p = sopProgress(s);
       return '<div class="card"><div><strong>' + esc(s.name) + '</strong>' +
-        '<div class="muted small">' + esc(s.role) + ' · ' + s.steps.length + ' steps · ' + esc(s.totalTime) + '</div></div>' +
+        '<div class="muted small">' + esc(s.role) + ' · ' + s.steps.length + ' steps · ' + esc(s.totalTime) +
+        ' · <span class="prog">' + p.done + '/' + p.total + ' done</span></div></div>' +
         '<div class="row">' +
         '<button data-open="' + s.id + '">Open</button>' +
         '<button data-dup="' + s.id + '" class="ghost">Duplicate</button>' +
@@ -43,6 +72,9 @@
         '</div></div>';
     }).join('');
   }
+
+  el('library-search').addEventListener('input', renderLibrary);
+  el('library-role').addEventListener('change', renderLibrary);
 
   el('library-list').addEventListener('click', function (e) {
     var lib = loadLib();
@@ -118,19 +150,43 @@
     return { done: done, total: current.steps.length, pct: Math.round(done / current.steps.length * 100) };
   }
 
+  function saveCurrent() {
+    if (!current) return;
+    var lib = loadLib().map(function (x) { return x.id === current.id ? current : x; });
+    saveLib(lib);
+  }
+
   function renderSOP() {
     var p = progress();
     el('sop-title').textContent = current.name;
     el('sop-meta').textContent = current.role + ' · ' + current.steps.length + ' steps · about ' + current.totalTime;
     el('progress-fill').style.width = p.pct + '%';
     el('progress-label').textContent = p.done + ' of ' + p.total + ' done (' + p.pct + '%)';
+
+    // completion banner: celebrate the run, record when it finished
+    var banner = el('complete-banner');
+    if (p.total > 0 && p.pct === 100) {
+      if (!current.completedAt) {
+        current.completedAt = new Date().toISOString();
+        saveCurrent();
+      }
+      banner.style.display = 'block';
+      banner.innerHTML = '<strong>Run complete.</strong> All ' + p.total + ' steps done in about ' +
+        esc(current.totalTime) + ' — completed ' +
+        esc(current.completedAt.slice(0, 16).replace('T', ' ')) + '.';
+    } else {
+      banner.style.display = 'none';
+      banner.innerHTML = '';
+    }
+
     el('step-list').innerHTML = current.steps.map(function (s, i) {
-      return '<label class="step' + (s.done ? ' done' : '') + '">' +
+      return '<div class="step-row"><label class="step' + (s.done ? ' done' : '') + '">' +
         '<input type="checkbox" data-step="' + i + '"' + (s.done ? ' checked' : '') + '>' +
         '<span class="step-n">' + s.n + '</span>' +
         '<span class="step-body"><strong>' + esc(s.text) + '</strong>' +
         '<span class="muted small">' + esc(s.owner) + ' · ' + esc(s.time) + '</span>' +
-        '<span class="tip"><strong>Watch out:</strong> ' + esc(s.tip) + '</span></span></label>';
+        '<span class="tip"><strong>Watch out:</strong> ' + esc(s.tip) + '</span></span></label>' +
+        '<button class="step-del ghost danger" data-del-step="' + i + '" title="Delete step" aria-label="Delete step ' + s.n + '">✕</button></div>';
     }).join('');
   }
 
@@ -138,9 +194,48 @@
     var i = e.target.dataset && e.target.dataset.step;
     if (i === undefined) return;
     current.steps[+i].done = e.target.checked;
-    var lib = loadLib().map(function (x) { return x.id === current.id ? current : x; });
-    saveLib(lib);
+    saveCurrent();
     renderSOP();
+  });
+
+  el('step-list').addEventListener('click', function (e) {
+    var i = e.target.dataset && e.target.dataset.delStep;
+    if (i === undefined) return;
+    if (!confirm('Delete step ' + current.steps[+i].n + ' ("' + current.steps[+i].text.slice(0, 40) + '…")?')) return;
+    F.removeStep(current, +i);
+    saveCurrent();
+    renderSOP();
+  });
+
+  function downloadText(filename, text, mime) {
+    var blob = new Blob([text], { type: mime || 'text/plain;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  }
+
+  function slug(s) { return String(s || 'sop').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'sop'; }
+
+  el('add-step-btn').addEventListener('click', function () {
+    var text = prompt('New step — describe the action in a sentence:');
+    if (text === null) return;
+    var added = F.addStep(current, text);
+    if (!added) { alert('That was too short — give me at least a couple of words.'); return; }
+    saveCurrent();
+    renderSOP();
+    window.scrollTo(0, document.body.scrollHeight);
+  });
+
+  el('csv-btn').addEventListener('click', function () {
+    if (!current) return;
+    downloadText(slug(current.name) + '.csv', F.sopToCSV(current), 'text/csv;charset=utf-8');
+  });
+
+  el('md-btn').addEventListener('click', function () {
+    if (!current) return;
+    downloadText(slug(current.name) + '.md', F.sopToMarkdown(current), 'text/markdown;charset=utf-8');
   });
 
   el('reset-btn').addEventListener('click', function () {
