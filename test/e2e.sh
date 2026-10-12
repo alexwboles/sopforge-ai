@@ -83,6 +83,40 @@ const sop=F.forgeSOP('T','R','Wipe the counter.');
 const b=F.addStep(sop,'Count the cash in the register');
 if(a.steps[0].owner!==b.owner||a.steps[0].tip!==b.tip) throw new Error('mismatch');"
 
+t "flow 11: moveStep reorders steps and renumbers" "
+const F=require('./js/forge.js');
+const sop=F.forgeSOP('T','R','1. Count the cash\n2. Wipe the counter\n3. Lock the door');
+if(!F.moveStep(sop,1,-1)) throw new Error('move up failed');
+if(sop.steps[0].text.indexOf('Wipe')!==0) throw new Error('wrong order: '+sop.steps[0].text);
+if(sop.steps[0].n!==1||sop.steps[1].n!==2) throw new Error('not renumbered');
+if(!F.moveStep(sop,0,1)) throw new Error('move down failed');
+if(sop.steps[0].text.indexOf('Count')!==0) throw new Error('move down wrong');
+if(F.moveStep(sop,0,-1)) throw new Error('move past top should fail');
+if(F.moveStep(sop,2,1)) throw new Error('move past bottom should fail');
+if(F.moveStep(sop,5,-1)) throw new Error('out of range should fail');"
+
+t "flow 12: stepMinutes parses time labels" "
+const F=require('./js/forge.js');
+if(F.stepMinutes('10 min')!==10) throw new Error('10 min');
+if(F.stepMinutes('1h 30m')!==90) throw new Error('1h 30m');
+if(F.stepMinutes('2 hours')!==120) throw new Error('2 hours');
+if(F.stepMinutes('5 mins')!==5) throw new Error('5 mins');
+if(F.stepMinutes('whatever')!==10) throw new Error('fallback should be 10');"
+
+t "flow 13: snapshotSOP deep-copies; restoreVersion rolls back" "
+const F=require('./js/forge.js');
+const sop=F.forgeSOP('T','R','1. Count the cash\n2. Wipe the counter');
+const v=F.snapshotSOP(sop);
+if(!v.at||v.stepCount!==2) throw new Error('bad snapshot');
+F.addStep(sop,'Lock the door now');
+if(sop.steps.length!==3) throw new Error('add failed');
+if(v.steps.length!==2) throw new Error('snapshot mutated by later edit');
+if(!F.restoreVersion(sop,v)) throw new Error('restore failed');
+if(sop.steps.length!==2||sop.steps[0].text.indexOf('Count')!==0) throw new Error('restore wrong');
+if(!F.restoreVersion(sop,{steps:[]})) throw new Error('restore to empty should work');
+if(F.restoreVersion(sop,null)) throw new Error('null version should fail');
+if(F.restoreVersion(null,v)) throw new Error('null sop should fail');"
+
 echo "----"
 echo "e2e: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]

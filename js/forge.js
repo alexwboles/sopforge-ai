@@ -159,6 +159,10 @@
     renumberSteps: renumberSteps,
     addStep: addStep,
     removeStep: removeStep,
+    moveStep: moveStep,
+    stepMinutes: stepMinutes,
+    snapshotSOP: snapshotSOP,
+    restoreVersion: restoreVersion,
     sopToCSV: sopToCSV,
     sopToMarkdown: sopToMarkdown,
     TEMPLATES: TEMPLATES,
@@ -196,6 +200,54 @@
     if (!sop || !sop.steps) return false;
     if (index < 0 || index >= sop.steps.length) return false;
     sop.steps.splice(index, 1);
+    renumberSteps(sop.steps);
+    sop.totalTime = totalTimeFor(sop.steps);
+    return true;
+  }
+
+  /** Move a step up (dir=-1) or down (dir=+1). Returns false at the bounds. */
+  function moveStep(sop, index, dir) {
+    if (!sop || !sop.steps) return false;
+    var j = index + dir;
+    if (index < 0 || index >= sop.steps.length) return false;
+    if (j < 0 || j >= sop.steps.length) return false;
+    var t = sop.steps[index];
+    sop.steps[index] = sop.steps[j];
+    sop.steps[j] = t;
+    renumberSteps(sop.steps);
+    sop.totalTime = totalTimeFor(sop.steps);
+    return true;
+  }
+
+  /** Parse a step time label ("10 min", "1h 30m") into minutes. */
+  function stepMinutes(timeLabel) {
+    var s = String(timeLabel || '');
+    var total = 0, found = false;
+    var m;
+    var re = /(\d+)\s*(h|hr|hrs|hour|hours|min|mins|minute|minutes|m)\b/gi;
+    while ((m = re.exec(s)) !== null) {
+      found = true;
+      var n = parseInt(m[1], 10);
+      total += /^h/i.test(m[2]) ? n * 60 : n;
+    }
+    return found ? total : 10;
+  }
+
+  /** Immutable snapshot of a SOP's steps for version history. */
+  function snapshotSOP(sop) {
+    if (!sop) return null;
+    return {
+      at: new Date().toISOString(),
+      name: sop.name,
+      stepCount: (sop.steps || []).length,
+      steps: JSON.parse(JSON.stringify(sop.steps || []))
+    };
+  }
+
+  /** Restore a snapshot's steps onto a live SOP. Returns false on bad input. */
+  function restoreVersion(sop, version) {
+    if (!sop || !version || !Array.isArray(version.steps)) return false;
+    sop.steps = JSON.parse(JSON.stringify(version.steps));
     renumberSteps(sop.steps);
     sop.totalTime = totalTimeFor(sop.steps);
     return true;

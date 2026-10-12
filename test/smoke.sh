@@ -94,6 +94,10 @@ for fn in sopToCSV sopToMarkdown addStep removeStep renderLibrary saveCurrent co
   if grep -q "$fn" js/app.js; then echo "PASS: app.js uses $fn"; PASS=$((PASS+1));
   else echo "FAIL: app.js missing $fn"; FAIL=$((FAIL+1)); fi
 done
+for fn in moveStep stepMinutes snapshotSOP restoreVersion startStepTimer snapshot-btn restore-btn version-sel; do
+  if grep -q "$fn" js/app.js; then echo "PASS: app.js uses $fn"; PASS=$((PASS+1));
+  else echo "FAIL: app.js missing $fn"; FAIL=$((FAIL+1)); fi
+done
 
 echo "----"
 echo "smoke: $PASS passed, $FAIL failed"

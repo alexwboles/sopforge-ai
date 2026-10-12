@@ -184,10 +184,23 @@
         '<input type="checkbox" data-step="' + i + '"' + (s.done ? ' checked' : '') + '>' +
         '<span class="step-n">' + s.n + '</span>' +
         '<span class="step-body"><strong>' + esc(s.text) + '</strong>' +
-        '<span class="muted small">' + esc(s.owner) + ' · ' + esc(s.time) + '</span>' +
+        '<span class="muted small">' + esc(s.owner) + ' · ' + esc(s.time) +
+        ' <span class="step-timer" data-timer-label="' + i + '"></span></span>' +
         '<span class="tip"><strong>Watch out:</strong> ' + esc(s.tip) + '</span></span></label>' +
-        '<button class="step-del ghost danger" data-del-step="' + i + '" title="Delete step" aria-label="Delete step ' + s.n + '">✕</button></div>';
+        '<div class="step-tools">' +
+        '<button class="step-tool ghost" data-move-step="' + i + '" data-dir="-1" title="Move step up" aria-label="Move step ' + s.n + ' up">↑</button>' +
+        '<button class="step-tool ghost" data-move-step="' + i + '" data-dir="1" title="Move step down" aria-label="Move step ' + s.n + ' down">↓</button>' +
+        '<button class="step-tool ghost" data-timer-step="' + i + '" title="Start ' + esc(s.time) + ' timer" aria-label="Start timer for step ' + s.n + '">⏱</button>' +
+        '<button class="step-del ghost danger" data-del-step="' + i + '" title="Delete step" aria-label="Delete step ' + s.n + '">✕</button></div></div>';
     }).join('');
+
+    // version-history dropdown
+    var vers = current.versions || [];
+    el('version-sel').innerHTML = '<option value="">Versions (' + vers.length + ')</option>' +
+      vers.map(function (v, vi) {
+        return '<option value="' + vi + '">' + esc(v.at.slice(0, 16).replace('T', ' ')) +
+          ' · ' + v.stepCount + ' steps</option>';
+      }).join('');
   }
 
   el('step-list').addEventListener('change', function (e) {
@@ -199,10 +212,92 @@
   });
 
   el('step-list').addEventListener('click', function (e) {
-    var i = e.target.dataset && e.target.dataset.delStep;
+    var t = e.target;
+    if (t.dataset && t.dataset.moveStep !== undefined) {
+      if (F.moveStep(current, +t.dataset.moveStep, +(t.dataset.dir || 0))) {
+        saveCurrent();
+        renderSOP();
+      }
+      return;
+    }
+    if (t.dataset && t.dataset.timerStep !== undefined) {
+      startStepTimer(+t.dataset.timerStep);
+      return;
+    }
+    var i = t.dataset && t.dataset.delStep;
     if (i === undefined) return;
     if (!confirm('Delete step ' + current.steps[+i].n + ' ("' + current.steps[+i].text.slice(0, 40) + '…")?')) return;
     F.removeStep(current, +i);
+    saveCurrent();
+    renderSOP();
+  });
+
+  /* ---------- per-step countdown timers ---------- */
+  var stepTimers = {}; // stepIndex -> interval id
+
+  function fmtClock(sec) {
+    var m = Math.floor(sec / 60), s = sec % 60;
+    return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  function timerBeep() {
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      var ac = timerBeep.ctx || (timerBeep.ctx = new AC());
+      [880, 660].forEach(function (freq, k) {
+        var o = ac.createOscillator(), g = ac.createGain();
+        o.connect(g); g.connect(ac.destination);
+        o.frequency.value = freq;
+        var t0 = ac.currentTime + k * 0.3;
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.exponentialRampToValueAtTime(0.3, t0 + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.25);
+        o.start(t0); o.stop(t0 + 0.3);
+      });
+    } catch (err) { /* audio unavailable — non-fatal */ }
+  }
+
+  function startStepTimer(i) {
+    var s = current.steps[i];
+    if (!s) return;
+    if (stepTimers[i]) { clearInterval(stepTimers[i]); delete stepTimers[i]; renderSOP(); return; }
+    var remain = F.stepMinutes(s.time) * 60;
+    var label = document.querySelector('[data-timer-label="' + i + '"]');
+    function paint() { if (label) label.textContent = '⏱ ' + fmtClock(remain); }
+    paint();
+    stepTimers[i] = setInterval(function () {
+      remain--;
+      if (remain <= 0) {
+        clearInterval(stepTimers[i]);
+        delete stepTimers[i];
+        timerBeep();
+        s.done = true;
+        saveCurrent();
+        renderSOP();
+        alert('Step ' + s.n + ' timer finished ("' + s.text.slice(0, 60) + '") — marked done.');
+        return;
+      }
+      paint();
+    }, 1000);
+  }
+
+  /* ---------- version history ---------- */
+  el('snapshot-btn').addEventListener('click', function () {
+    current.versions = current.versions || [];
+    current.versions.push(F.snapshotSOP(current));
+    if (current.versions.length > 10) current.versions = current.versions.slice(-10);
+    saveCurrent();
+    renderSOP();
+  });
+
+  el('restore-btn').addEventListener('click', function () {
+    var vi = el('version-sel').value;
+    if (vi === '' || !current.versions || !current.versions[+vi]) return;
+    var v = current.versions[+vi];
+    if (!confirm('Restore the version from ' + v.at.slice(0, 16).replace('T', ' ') +
+        ' (' + v.stepCount + ' steps)? Current steps will be replaced.')) return;
+    F.restoreVersion(current, v);
     saveCurrent();
     renderSOP();
   });

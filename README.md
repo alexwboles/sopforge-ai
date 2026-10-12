@@ -14,7 +14,8 @@ Type (or paste) how a process works. SopForge forges it into a reusable, printab
 ## Features
 1. **Plain-English forge** — numbered lists, bullet lists, or free prose all parse into steps
 2. **Smart enrichment** — each step gets an owner hint (Cashier, Manager, Kitchen team…), a time estimate, and a contextual "watch out" tip
-3. **Interactive checklist** — tap steps done, watch the progress bar, reset anytime; add or delete steps after forging (renumbered automatically); a "Run complete" banner records when the checklist finished
+3. **Interactive checklist** — tap steps done, watch the progress bar, reset anytime; add, delete, or **reorder steps** (up/down) after forging (renumbered automatically); per-step **countdown timers** run the step's time estimate with an audible finish that marks the step done; a "Run complete" banner records when the checklist finished
+4. **Version history** — snapshot a SOP before editing; browse up to 10 versions and restore any of them
 4. **5 starter templates** — opening the shop, onboarding, returns, closing, restroom deep-clean
 5. **SOP library** — save, open, duplicate, and delete SOPs (stored in `localStorage`, private to the device); search by name/step text, filter by role, per-SOP progress on every card
 6. **Print view** — clean printed checklist for the wall or the binder
