@@ -117,6 +117,38 @@ if(!F.restoreVersion(sop,{steps:[]})) throw new Error('restore to empty should w
 if(F.restoreVersion(sop,null)) throw new Error('null version should fail');
 if(F.restoreVersion(null,v)) throw new Error('null sop should fail');"
 
+t "flow 12: CSV export -> re-import round-trips" "
+const F=require('./js/forge.js');
+const sop=F.forgeSOP('Closing','Closer','Count the register and drop the cash in the safe. Turn off the open sign and lock the front door. Wipe down all counters.');
+const csv=F.sopToCSV(sop);
+const back=F.sopFromCSV('Closing copy',csv);
+if(!back) throw new Error('import returned null');
+if(back.steps.length!==sop.steps.length) throw new Error('step count '+back.steps.length+' vs '+sop.steps.length);
+if(back.steps[0].text!==sop.steps[0].text) throw new Error('text mismatch: '+back.steps[0].text);
+if(back.steps[0].owner!==sop.steps[0].owner) throw new Error('owner lost: '+back.steps[0].owner);
+if(F.sopFromCSV('x','not,a,real\nsop')!==null) throw new Error('garbage should fail');
+if(F.sopFromCSV('x','Step,Text')!==null) throw new Error('header-only should fail');"
+
+t "flow 13: Markdown export -> re-import round-trips" "
+const F=require('./js/forge.js');
+const sop=F.forgeSOP('Opening','Opener','Unlock the front door and disarm the alarm. Turn on all lights and the open sign. Count the cash in the register.');
+const md=F.sopToMarkdown(sop);
+const back=F.sopFromMarkdown(md);
+if(!back) throw new Error('import returned null');
+if(back.name!=='Opening') throw new Error('name lost: '+back.name);
+if(back.steps.length!==sop.steps.length) throw new Error('step count mismatch');
+back.steps.forEach((s,i)=>{ if(s.text!==sop.steps[i].text) throw new Error('step '+i+' text lost'); });
+if(F.sopFromMarkdown('just some prose\nno checklist here')!==null) throw new Error('prose should fail');
+if(F.sopFromMarkdown('# Empty\n\n## Checklist\n')!==null) throw new Error('empty checklist should fail');"
+
+t "flow 14: CSV import tolerates quoted commas + re-derives missing fields" "
+const F=require('./js/forge.js');
+const csv='Step,Text,Owner,Time estimate,Watch-out tip,Done\r\n\"1\",\"Wipe the counter, then the sink\",\"\",\"\",\"\",no';
+const back=F.sopFromCSV('Q',csv);
+if(!back||back.steps.length!==1) throw new Error('quoted comma broke parsing');
+if(back.steps[0].text!=='Wipe the counter, then the sink') throw new Error('text wrong: '+back.steps[0].text);
+if(!back.steps[0].owner||!back.steps[0].time||!back.steps[0].tip) throw new Error('missing fields not re-derived');"
+
 echo "----"
 echo "e2e: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]

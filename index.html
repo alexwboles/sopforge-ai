@@ -47,6 +47,8 @@
       <div class="library-toolbar">
         <input id="library-search" type="search" placeholder="Search SOPs by name or step…" aria-label="Search SOP library">
         <select id="library-role" aria-label="Filter by role"><option value="">All roles</option></select>
+        <button id="import-btn" class="ghost" type="button">Import CSV / .md</button>
+        <input id="import-file" type="file" accept=".csv,.md,.markdown,.txt" hidden>
       </div>
       <div id="library-list"></div>
     </div>
@@ -58,6 +60,7 @@
       <button id="back-btn" class="ghost">← Back</button>
       <div class="row">
         <button id="add-step-btn" class="ghost">＋ Add step</button>
+        <select id="owner-filter" class="ghost" aria-label="Filter steps by owner"><option value="">Everyone</option></select>
         <button id="snapshot-btn" class="ghost">Snapshot</button>
         <select id="version-sel" class="ghost" aria-label="Version history"></select>
         <button id="restore-btn" class="ghost">Restore</button>
@@ -73,6 +76,7 @@
     <p id="progress-label" class="muted small"></p>
     <div id="complete-banner" class="complete-banner" style="display:none"></div>
     <div id="step-list"></div>
+    <div id="run-history"></div>
 
     <div class="panel ai-panel">
       <h3>Optional AI polish</h3>

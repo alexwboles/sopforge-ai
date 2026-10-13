@@ -150,6 +150,100 @@
     },
   ];
 
+  // ---------- imports (round-trip with sopToCSV / sopToMarkdown) ----------
+  function parseCSVRow(line) {
+    var cells = [], cur = '', inQ = false;
+    for (var i = 0; i < line.length; i++) {
+      var c = line[i];
+      if (inQ) {
+        if (c === '"') {
+          if (line[i + 1] === '"') { cur += '"'; i++; }
+          else inQ = false;
+        } else { cur += c; }
+      } else if (c === '"') { inQ = true; }
+      else if (c === ',') { cells.push(cur); cur = ''; }
+      else { cur += c; }
+    }
+    cells.push(cur);
+    return cells;
+  }
+
+  function finishImport(name, role, steps) {
+    renumberSteps(steps);
+    return {
+      id: 'sop_' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36),
+      name: name || 'Imported SOP',
+      role: role || 'General',
+      createdAt: new Date().toISOString(),
+      steps: steps,
+      totalTime: totalTimeFor(steps)
+    };
+  }
+
+  /** Rebuild a SOP from sopToCSV() output. Returns null on bad input. */
+  function sopFromCSV(name, csvText) {
+    var lines = String(csvText || '').replace(/^﻿/, '').split(/\r?\n/)
+      .filter(function (l) { return l.trim(); });
+    if (lines.length < 2) return null;
+    var header = parseCSVRow(lines[0]).map(function (c) { return c.trim().toLowerCase(); });
+    function col(want, fallback) {
+      var i = header.indexOf(want);
+      return i >= 0 ? i : fallback;
+    }
+    var ti = col('text', 1), oi = col('owner', 2), ei = col('time estimate', 3), wi = col('watch-out tip', 4);
+    var steps = [];
+    for (var r = 1; r < lines.length; r++) {
+      var cells = parseCSVRow(lines[r]);
+      var txt = (cells[ti] || '').trim();
+      if (!txt) continue;
+      steps.push({
+        n: 0,
+        text: txt.charAt(0).toUpperCase() + txt.slice(1),
+        owner: (cells[oi] || '').trim() || ownerFor(txt),
+        time: (cells[ei] || '').trim() || estimateTime(txt),
+        tip: (cells[wi] || '').trim() || tipFor(txt, steps.length),
+        done: false
+      });
+    }
+    if (!steps.length) return null;
+    return finishImport(name, 'General', steps);
+  }
+
+  /** Rebuild a SOP from sopToMarkdown() output. Returns null on bad input. */
+  function sopFromMarkdown(mdText) {
+    var name = '', role = '';
+    var steps = [], cur = null;
+    String(mdText || '').split(/\r?\n/).forEach(function (raw) {
+      var line = raw.trim();
+      var h = /^#\s+([^#].*)$/.exec(line);
+      if (h) { if (!steps.length && !cur && !name) name = h[1].trim(); return; }
+      var rl = /^_(.+)_\s*$/.exec(line);
+      if (rl) {
+        var rm = /^(.+?)\s*·\s*\d+\s*steps/.exec(rl[1]);
+        if (rm && !role) role = rm[1].trim();
+        return;
+      }
+      var m = /^-\s*\[[ xX]\]\s*\*\*\d+\.\s*(.+?)\*\*\s*$/.exec(line);
+      if (m) {
+        cur = { n: 0, text: m[1].trim(), owner: '', time: '', tip: '', done: false };
+        steps.push(cur);
+        return;
+      }
+      var o = /^—\s*Owner:\s*(.+?)\s*·\s*(.+?)\s*$/.exec(line);
+      if (o && cur) { cur.owner = o[1].trim(); cur.time = o[2].trim(); return; }
+      var w = /^—\s*Watch out:\s*(.+?)\s*$/.exec(line);
+      if (w && cur) { cur.tip = w[1].trim(); }
+    });
+    steps = steps.filter(function (s) { return s.text; });
+    if (!steps.length) return null;
+    steps.forEach(function (s, i) {
+      if (!s.owner) s.owner = ownerFor(s.text);
+      if (!s.time) s.time = estimateTime(s.text);
+      if (!s.tip) s.tip = tipFor(s.text, i);
+    });
+    return finishImport(name, role, steps);
+  }
+
   var api = {
     splitSentences: splitSentences,
     ownerFor: ownerFor,
@@ -165,6 +259,8 @@
     restoreVersion: restoreVersion,
     sopToCSV: sopToCSV,
     sopToMarkdown: sopToMarkdown,
+    sopFromCSV: sopFromCSV,
+    sopFromMarkdown: sopFromMarkdown,
     TEMPLATES: TEMPLATES,
   };
 

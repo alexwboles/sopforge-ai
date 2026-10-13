@@ -136,6 +136,29 @@
   }
   el('forge-btn').addEventListener('click', forge);
 
+  /* ---------- import: round-trip a previously exported CSV / Markdown ---------- */
+  el('import-btn').addEventListener('click', function () { el('import-file').click(); });
+  el('import-file').addEventListener('change', function (e) {
+    var f = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      var text = String(reader.result || '');
+      var sop = /\.csv$/i.test(f.name)
+        ? F.sopFromCSV(f.name.replace(/\.csv$/i, ''), text)
+        : F.sopFromMarkdown(text);
+      if (!sop) {
+        alert('Could not read that file — it does not look like a SopForge CSV or Markdown export.');
+        return;
+      }
+      var lib = loadLib();
+      lib.unshift(sop); saveLib(lib); renderLibrary();
+      openSOP(sop.id);
+    };
+    reader.readAsText(f);
+  });
+
   // ---------- SOP view / checklist ----------
   function openSOP(id) {
     var lib = loadLib();
@@ -163,11 +186,32 @@
     el('progress-fill').style.width = p.pct + '%';
     el('progress-label').textContent = p.done + ' of ' + p.total + ' done (' + p.pct + '%)';
 
+    // owner filter: distinct owners across steps (for shift handoffs)
+    var owners = [];
+    current.steps.forEach(function (s) {
+      if (s.owner && owners.indexOf(s.owner) === -1) owners.push(s.owner);
+    });
+    var ofilter = el('owner-filter');
+    var keepOwner = ofilter.value;
+    ofilter.innerHTML = '<option value="">Everyone</option>' + owners.map(function (o) {
+      return '<option' + (o === keepOwner ? ' selected' : '') + '>' + esc(o) + '</option>';
+    }).join('');
+    if (owners.indexOf(keepOwner) === -1) ofilter.value = '';
+
     // completion banner: celebrate the run, record when it finished
     var banner = el('complete-banner');
     if (p.total > 0 && p.pct === 100) {
       if (!current.completedAt) {
         current.completedAt = new Date().toISOString();
+        // log the run: wall-clock from first checked step to completion
+        var mins = null;
+        if (current.runStartedAt) {
+          mins = Math.max(1, Math.round((Date.now() - new Date(current.runStartedAt).getTime()) / 60000));
+        }
+        current.runs = current.runs || [];
+        current.runs.unshift({ at: current.completedAt, steps: p.total, minutes: mins });
+        current.runs = current.runs.slice(0, 20);
+        current.runStartedAt = null;
         saveCurrent();
       }
       banner.style.display = 'block';
@@ -179,12 +223,15 @@
       banner.innerHTML = '';
     }
 
+    var only = ofilter.value;
     el('step-list').innerHTML = current.steps.map(function (s, i) {
+      if (only && s.owner !== only) return '';
       return '<div class="step-row"><label class="step' + (s.done ? ' done' : '') + '">' +
         '<input type="checkbox" data-step="' + i + '"' + (s.done ? ' checked' : '') + '>' +
         '<span class="step-n">' + s.n + '</span>' +
         '<span class="step-body"><strong>' + esc(s.text) + '</strong>' +
-        '<span class="muted small">' + esc(s.owner) + ' · ' + esc(s.time) +
+        '<span class="muted small"><button class="owner-badge" data-owner-step="' + i + '" title="Assign owner">' +
+        esc(s.owner) + '</button> · ' + esc(s.time) +
         ' <span class="step-timer" data-timer-label="' + i + '"></span></span>' +
         '<span class="tip"><strong>Watch out:</strong> ' + esc(s.tip) + '</span></span></label>' +
         '<div class="step-tools">' +
@@ -193,6 +240,8 @@
         '<button class="step-tool ghost" data-timer-step="' + i + '" title="Start ' + esc(s.time) + ' timer" aria-label="Start timer for step ' + s.n + '">⏱</button>' +
         '<button class="step-del ghost danger" data-del-step="' + i + '" title="Delete step" aria-label="Delete step ' + s.n + '">✕</button></div></div>';
     }).join('');
+
+    renderRunHistory();
 
     // version-history dropdown
     var vers = current.versions || [];
@@ -203,16 +252,53 @@
       }).join('');
   }
 
+  /* Run history: every completed run with wall-clock duration + average. */
+  function renderRunHistory() {
+    var box = el('run-history');
+    var runs = current.runs || [];
+    if (!runs.length) { box.innerHTML = ''; return; }
+    var timed = runs.filter(function (r) { return r.minutes != null; });
+    var avg = timed.length
+      ? Math.round(timed.reduce(function (a, r) { return a + r.minutes; }, 0) / timed.length)
+      : null;
+    box.innerHTML = '<h3>Run history <span class="muted small">' + runs.length + ' completed' +
+      (avg != null ? ' · avg ' + avg + ' min' : '') + '</span></h3>' +
+      '<ul class="run-list">' + runs.map(function (r) {
+        return '<li><span>' + esc(String(r.at).slice(0, 16).replace('T', ' ')) + '</span>' +
+          '<span class="muted small">' + r.steps + ' steps' +
+          (r.minutes != null ? ' · ' + r.minutes + ' min' : '') + '</span></li>';
+      }).join('') + '</ul>';
+  }
+
+  el('owner-filter').addEventListener('change', renderSOP);
+
   el('step-list').addEventListener('change', function (e) {
     var i = e.target.dataset && e.target.dataset.step;
     if (i === undefined) return;
+    var wasDone = current.steps.filter(function (s) { return s.done; }).length;
     current.steps[+i].done = e.target.checked;
+    // a fresh run starts at the first checked step; reset clears it
+    if (wasDone === 0 && e.target.checked && !current.runStartedAt) {
+      current.runStartedAt = new Date().toISOString();
+    }
     saveCurrent();
     renderSOP();
   });
 
   el('step-list').addEventListener('click', function (e) {
     var t = e.target;
+    var oi = t.dataset && t.dataset.ownerStep;
+    if (oi !== undefined) {
+      e.preventDefault();
+      var cur = current.steps[+oi];
+      var val = prompt('Assign owner for step ' + cur.n + ' ("' + cur.text.slice(0, 50) + '"):', cur.owner);
+      if (val !== null && val.trim()) {
+        cur.owner = val.trim().slice(0, 40);
+        saveCurrent();
+        renderSOP();
+      }
+      return;
+    }
     if (t.dataset && t.dataset.moveStep !== undefined) {
       if (F.moveStep(current, +t.dataset.moveStep, +(t.dataset.dir || 0))) {
         saveCurrent();
@@ -335,6 +421,8 @@
 
   el('reset-btn').addEventListener('click', function () {
     current.steps.forEach(function (s) { s.done = false; });
+    current.completedAt = null;   // next completion is a new run
+    current.runStartedAt = null;
     var lib = loadLib().map(function (x) { return x.id === current.id ? current : x; });
     saveLib(lib); renderSOP();
   });

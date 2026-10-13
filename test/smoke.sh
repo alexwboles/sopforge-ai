@@ -98,6 +98,19 @@ for fn in moveStep stepMinutes snapshotSOP restoreVersion startStepTimer snapsho
   if grep -q "$fn" js/app.js; then echo "PASS: app.js uses $fn"; PASS=$((PASS+1));
   else echo "FAIL: app.js missing $fn"; FAIL=$((FAIL+1)); fi
 done
+for fn in sopFromCSV sopFromMarkdown owner-badge owner-filter run-history import-btn import-file runStartedAt; do
+  if grep -q "$fn" js/app.js; then echo "PASS: app.js uses $fn"; PASS=$((PASS+1));
+  else echo "FAIL: app.js missing $fn"; FAIL=$((FAIL+1)); fi
+done
+for fn in sopFromCSV sopFromMarkdown; do
+  if node -e "const F=require('./js/forge.js'); if(typeof F.$fn!=='function') throw new Error('no fn')"; then
+    echo "PASS: forge.js exports $fn"; PASS=$((PASS+1));
+  else echo "FAIL: forge.js missing $fn"; FAIL=$((FAIL+1)); fi
+done
+for needle in 'id="owner-filter"' 'id="run-history"' 'id="import-btn"' 'id="import-file"'; do
+  if grep -q "$needle" index.html; then echo "PASS: index.html has $needle"; PASS=$((PASS+1));
+  else echo "FAIL: index.html missing $needle"; FAIL=$((FAIL+1)); fi
+done
 
 echo "----"
 echo "smoke: $PASS passed, $FAIL failed"

@@ -248,3 +248,19 @@ footer { text-align: center; padding: 26px 16px 34px; }
 .library-toolbar select { padding: 9px 12px; font: inherit; font-size: 14px;
   border: 1px solid var(--line); border-radius: 0; background: #fff; color: var(--ink); }
 .prog { font-weight: 700; color: var(--accent-deep); }
+
+/* ---------- owner assignment + filter ---------- */
+.owner-badge { background: #eef2f7; border: 1px solid #ccd6e6; border-radius: 0; padding: 1px 8px;
+  font-size: 12px; font-weight: 600; color: var(--ink-soft); cursor: pointer; font-family: inherit; }
+.owner-badge:hover { background: #e2e9f2; color: var(--ink); transform: none; box-shadow: none; }
+select#owner-filter { padding: 8px 10px; font-size: 13px; font-family: inherit; background: transparent;
+  border: 1px solid transparent; border-radius: 0; color: var(--ink-soft); cursor: pointer; }
+select#owner-filter:hover { background: var(--line-soft); }
+
+/* ---------- run history ---------- */
+#run-history { margin: 18px 0 6px; }
+#run-history h3 { font-size: 15px; margin: 0 0 8px; }
+.run-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 0; background: var(--card); }
+.run-list li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 14px; font-size: 13.5px;
+  border-bottom: 1px solid var(--line-soft); }
+.run-list li:last-child { border-bottom: none; }
