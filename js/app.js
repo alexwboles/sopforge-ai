@@ -19,11 +19,18 @@
 
   // ---------- views ----------
   function show(id) {
-    ['view-forge', 'view-sop'].forEach(function (v) {
+    ['view-forge', 'view-playbook', 'view-sop'].forEach(function (v) {
       el(v).style.display = v === id ? 'block' : 'none';
+    });
+    ['forge', 'playbook'].forEach(function (t) {
+      var tab = el('tab-' + t);
+      if (tab) tab.classList.toggle('active', id === 'view-' + t);
     });
     window.scrollTo(0, 0);
   }
+
+  el('tab-forge').addEventListener('click', function () { show('view-forge'); });
+  el('tab-playbook').addEventListener('click', function () { show('view-playbook'); renderLibrary(); });
 
   // ---------- library ----------
   function sopProgress(s) {
@@ -52,24 +59,48 @@
     });
 
     var box = el('library-list');
+    var cnt = el('playbook-count');
+    if (cnt) cnt.textContent = lib.length ? lib.length : '';
     if (!lib.length) {
-      box.innerHTML = '<p class="muted">No saved SOPs yet. Forge one above, or load a starter template.</p>';
+      box.innerHTML = '<p class="muted">No saved SOPs yet. <a href="#" id="empty-forge">Forge your first one</a>, or load a starter template.</p>';
+      var ef = el('empty-forge');
+      if (ef) ef.addEventListener('click', function (e) { e.preventDefault(); show('view-forge'); });
       return;
     }
     if (!shown.length) {
       box.innerHTML = '<p class="muted">No SOPs match your search.</p>';
       return;
     }
-    box.innerHTML = shown.map(function (s) {
+    // Trainual-style subjects: group by role, roles alpha, unassigned last.
+    var groups = {};
+    shown.forEach(function (s) {
+      var r = (s.role || 'Unassigned').trim() || 'Unassigned';
+      (groups[r] = groups[r] || []).push(s);
+    });
+    var order = Object.keys(groups).sort(function (a, b) {
+      if (a === 'Unassigned') return 1;
+      if (b === 'Unassigned') return -1;
+      return a.localeCompare(b);
+    });
+    function sopCard(s) {
       var p = sopProgress(s);
-      return '<div class="card"><div><strong>' + esc(s.name) + '</strong>' +
-        '<div class="muted small">' + esc(s.role) + ' · ' + s.steps.length + ' steps · ' + esc(s.totalTime) +
-        ' · <span class="prog">' + p.done + '/' + p.total + ' done</span></div></div>' +
+      var pct = p.total ? Math.round(p.done / p.total * 100) : 0;
+      var lastRun = (s.runs && s.runs[0] && s.runs[0].at) ? String(s.runs[0].at).slice(0, 10) : null;
+      return '<div class="card sopcard"><div class="sopcard-top"><strong>' + esc(s.name) + '</strong>' +
+        '<span class="prognum">' + p.done + '/' + p.total + '</span></div>' +
+        '<div class="progressbar"><div class="progressbar-fill" style="width:' + pct + '%"></div></div>' +
+        '<div class="muted small">' + s.steps.length + ' steps · ' + esc(s.totalTime) +
+        (lastRun ? ' · last run ' + esc(lastRun) : ' · never run') + '</div>' +
         '<div class="row">' +
-        '<button data-open="' + s.id + '">Open</button>' +
+        '<button data-open="' + s.id + '">Open &amp; run</button>' +
         '<button data-dup="' + s.id + '" class="ghost">Duplicate</button>' +
         '<button data-del="' + s.id + '" class="ghost danger">Delete</button>' +
         '</div></div>';
+    }
+    box.innerHTML = order.map(function (r) {
+      return '<div class="subject"><div class="subject-head"><span class="subject-name">' + esc(r) + '</span>' +
+        '<span class="muted small">' + groups[r].length + ' SOP' + (groups[r].length === 1 ? '' : 's') + '</span></div>' +
+        '<div class="subject-grid">' + groups[r].map(sopCard).join('') + '</div></div>';
     }).join('');
   }
 
@@ -427,10 +458,9 @@
     saveLib(lib); renderSOP();
   });
   el('print-btn').addEventListener('click', function () { window.print(); });
-  el('back-btn').addEventListener('click', function () { renderLibrary(); show('view-forge'); });
+  el('back-btn').addEventListener('click', function () { renderLibrary(); show('view-playbook'); });
   el('library-btn').addEventListener('click', function () {
-    renderLibrary(); show('view-forge');
-    setTimeout(function () { el('library-panel').scrollIntoView({ behavior: 'smooth' }); }, 0);
+    renderLibrary(); show('view-playbook');
   });
 
   // ---------- optional AI polish (owner's own key, never required) ----------

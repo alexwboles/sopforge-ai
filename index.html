@@ -12,6 +12,10 @@
 <body>
 <header class="topbar">
   <div class="brand">SopForge</div>
+  <nav class="viewtabs" aria-label="Views">
+    <button id="tab-forge" class="viewtab active">Forge</button>
+    <button id="tab-playbook" class="viewtab">Playbook <span id="playbook-count" class="tabcount"></span></button>
+  </nav>
   <div class="muted small">Describe the process. Get the playbook.</div>
 </header>
 
@@ -40,10 +44,17 @@
 
     <h2 class="section-title">Or start from a template</h2>
     <div id="template-list" class="chips"></div>
+  </section>
 
+  <!-- PLAYBOOK VIEW -->
+  <section id="view-playbook" style="display:none">
+    <div class="hero slim">
+      <span class="spec-tag">SOP-02 · Playbook</span>
+      <h1>Your playbook</h1>
+      <p class="muted">Every process your team runs, grouped by role. Open one to run it as a checklist.</p>
+    </div>
     <div class="panel" id="library-panel">
       <div class="spec-label">Spec archive</div>
-      <h2>My SOP library</h2>
       <div class="library-toolbar">
         <input id="library-search" type="search" placeholder="Search SOPs by name or step…" aria-label="Search SOP library">
         <select id="library-role" aria-label="Filter by role"><option value="">All roles</option></select>
@@ -56,19 +67,26 @@
 
   <!-- SOP VIEW -->
   <section id="view-sop" style="display:none">
-    <div class="row between">
-      <button id="back-btn" class="ghost">← Back</button>
-      <div class="row">
-        <button id="add-step-btn" class="ghost">＋ Add step</button>
-        <select id="owner-filter" class="ghost" aria-label="Filter steps by owner"><option value="">Everyone</option></select>
-        <button id="snapshot-btn" class="ghost">Snapshot</button>
-        <select id="version-sel" class="ghost" aria-label="Version history"></select>
-        <button id="restore-btn" class="ghost">Restore</button>
-        <button id="csv-btn" class="ghost">Export CSV</button>
-        <button id="md-btn" class="ghost">Export .md</button>
-        <button id="reset-btn" class="ghost">↺ Reset checklist</button>
-        <button id="print-btn" class="ghost">Print</button>
+    <div class="sop-tools">
+      <div class="row between">
+        <button id="back-btn" class="ghost">← Back</button>
+        <div class="row">
+          <button id="add-step-btn" class="ghost">＋ Add step</button>
+          <button id="reset-btn" class="primary">↺ Reset checklist</button>
+        </div>
       </div>
+      <details class="more-tools">
+        <summary>More tools</summary>
+        <div class="row">
+          <select id="owner-filter" class="ghost" aria-label="Filter steps by owner"><option value="">Everyone</option></select>
+          <button id="snapshot-btn" class="ghost">Snapshot</button>
+          <select id="version-sel" class="ghost" aria-label="Version history"></select>
+          <button id="restore-btn" class="ghost">Restore</button>
+          <button id="csv-btn" class="ghost">Export CSV</button>
+          <button id="md-btn" class="ghost">Export .md</button>
+          <button id="print-btn" class="ghost">Print</button>
+        </div>
+      </details>
     </div>
     <h1 id="sop-title"></h1>
     <p id="sop-meta" class="muted"></p>
