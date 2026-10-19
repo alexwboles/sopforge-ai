@@ -8,7 +8,9 @@
   function loadLib() {
     try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) { return []; }
   }
-  function saveLib(lib) { localStorage.setItem(KEY, JSON.stringify(lib)); }
+  function saveLib(lib) {
+    try { localStorage.setItem(KEY, JSON.stringify(lib)); } catch (e) { /* storage blocked (e.g. sandboxed iframe) — library keeps working in-memory for this session */ }
+  }
 
   function el(id) { return document.getElementById(id); }
   function esc(s) {
